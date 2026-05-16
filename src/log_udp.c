@@ -27,6 +27,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 #include "lwip/udp.h"
 #include "lwip/pbuf.h"
@@ -59,12 +60,19 @@ bool log_udp_init(void) {
 void log_udp_send(const char *fmt, ...) {
     if (!g_inited) return;
 
+    /* Prepend [t=Nms] timestamp so we can see exact timing between lines. */
     char buf[LOG_MAX_LEN];
+    uint32_t ms = to_ms_since_boot(get_absolute_time());
+    int prefix_n = snprintf(buf, sizeof(buf), "[t=%lums] ", (unsigned long)ms);
+    if (prefix_n < 0) return;
+
     va_list ap;
     va_start(ap, fmt);
-    int n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    int body_n = vsnprintf(buf + prefix_n, sizeof(buf) - prefix_n, fmt, ap);
     va_end(ap);
-    if (n < 0) return;
+    if (body_n < 0) return;
+
+    int n = prefix_n + body_n;
     if (n >= (int)sizeof(buf)) n = sizeof(buf) - 1;
 
     cyw43_arch_lwip_begin();

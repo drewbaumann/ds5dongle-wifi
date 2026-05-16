@@ -86,14 +86,19 @@ int main(void) {
         LOG("[main] mdns failed, but usbip still listening\n");
     }
     log_udp_send("[main] after mdns_skel_start (success)\n");
+    log_udp_send("[main] entering heartbeat loop; fast for 5s then slow\n");
 
-    /* DELIBERATELY skipping stage_marker(4) and the LED in the heartbeat:
-     * we suspect cyw43_arch_gpio_put hangs the N-th time after mDNS init.
-     * If heartbeats keep arriving here, the hypothesis is confirmed and
-     * the next change is to take the LED out of the hot path. */
+    /* Fine-grained heartbeats with timestamps so we see exactly when the
+     * firmware hangs (if it does) and at what time. First 50 beats at
+     * 100 ms (5 s of fast pings), then 1 Hz forever. */
     int beat = 0;
     while (true) {
-        log_udp_send("[main] heartbeat %d (no LED, no stage marker)\n", ++beat);
-        sleep_ms(1000);
+        beat++;
+        log_udp_send("[main] heartbeat %d\n", beat);
+        if (beat < 50) {
+            sleep_ms(100);
+        } else {
+            sleep_ms(1000);
+        }
     }
 }
