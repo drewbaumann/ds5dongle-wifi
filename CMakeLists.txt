@@ -178,3 +178,52 @@ target_link_libraries(ds5-bridge
 
 pico_add_extra_outputs(ds5-bridge)
 
+# ─────────────────────────────────────────────────────────────────────────
+# SenseLink skeleton — PR 1
+#
+# Wi-Fi + usbip stub, no BT, no audio, no USB device. Lets us validate the
+# CYW43 station mode, lwIP, and the usbip wire protocol end-to-end with
+# nothing more than `usbip list -r <pico>` from a Linux host.
+#
+# Enable with:
+#   cmake -DSENSELINK_SKEL=ON -DSENSELINK_WIFI_SSID=... -DSENSELINK_WIFI_PSK=...
+# ─────────────────────────────────────────────────────────────────────────
+option(SENSELINK_SKEL "Build the PR 1 Wi-Fi/usbip skeleton firmware" OFF)
+set(SENSELINK_WIFI_SSID "" CACHE STRING "Wi-Fi SSID for skeleton firmware")
+set(SENSELINK_WIFI_PSK  "" CACHE STRING "Wi-Fi PSK for skeleton firmware")
+
+if (SENSELINK_SKEL)
+    if (SENSELINK_WIFI_SSID STREQUAL "" OR SENSELINK_WIFI_PSK STREQUAL "")
+        message(FATAL_ERROR
+            "SENSELINK_SKEL=ON requires -DSENSELINK_WIFI_SSID=... and -DSENSELINK_WIFI_PSK=...")
+    endif()
+
+    add_executable(senselink-skel
+        src/main_skel.c
+        src/wifi_skel.c
+        src/usbip_skel.c
+    )
+
+    target_include_directories(senselink-skel PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
+
+    target_compile_definitions(senselink-skel PRIVATE
+        SENSELINK_WIFI_SSID="${SENSELINK_WIFI_SSID}"
+        SENSELINK_WIFI_PSK="${SENSELINK_WIFI_PSK}"
+        CYW43_LWIP=1
+    )
+
+    target_link_libraries(senselink-skel
+        pico_stdlib
+        pico_cyw43_arch_lwip_threadsafe_background
+    )
+
+    pico_enable_stdio_uart(senselink-skel 1)
+    # USB stdio off: skeleton doesn't act as a USB device, and newer TinyUSB
+    # breaks the SDK's stdio_usb CDC descriptors. UART pin output is fine.
+    pico_enable_stdio_usb(senselink-skel 0)
+    pico_set_program_name(senselink-skel "senselink-skel")
+    pico_add_extra_outputs(senselink-skel)
+endif()
+

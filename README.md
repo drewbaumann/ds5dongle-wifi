@@ -1,3 +1,17 @@
+# ds5dongle-wifi  (fork of [awalol/DS5Dongle](https://github.com/awalol/DS5Dongle))
+
+> Adds a Wi-Fi mode that exposes the bridged DualSense over the network as
+> a Linux-kernel-compatible `usbip` device. Pairs with the
+> [SenseLink](https://github.com/drewbaumann/senselink) host installer —
+> attach the Pico from a Linux box anywhere your network reaches.
+
+This fork keeps the original Bluetooth-to-USB bridge intact. The new
+`senselink-skel` target is a stand-alone PR 1 milestone: Wi-Fi connect +
+`usbip` skeleton, with no BT and no USB device. See
+[`docs/PR1.md`](docs/PR1.md) for what it does and how to test it.
+
+---
+
 # Pico2W DualSense 5 Bridge
 
 [中文](./README.CN.md)
