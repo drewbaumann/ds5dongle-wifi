@@ -32,6 +32,16 @@ static inline void led(bool on) {
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, on);
 }
 
+/* Blink N times rapidly to mark "I just finished stage N". If the code
+ * hangs after this, the user sees the last completed stage's count. */
+static void stage_marker(int n) {
+    for (int i = 0; i < n; i++) {
+        led(true);  sleep_ms(150);
+        led(false); sleep_ms(150);
+    }
+    sleep_ms(500);
+}
+
 /* Block forever, blinking an SOS so the user can see we got far enough to
  * read the LED but something failed. */
 static __attribute__((noreturn)) void halt_blink_sos(void) {
@@ -57,24 +67,26 @@ int main(void) {
         printf("[main] wifi init failed; halting (SOS on LED)\n");
         halt_blink_sos();
     }
-
-    led(true);  /* Wi-Fi up: solid on while we bring up services */
+    stage_marker(2);   /* "Wi-Fi up" — count of blinks = stage just done */
 
     if (!usbip_skel_start()) {
         printf("[main] usbip start failed; halting (SOS on LED)\n");
         halt_blink_sos();
     }
+    stage_marker(3);   /* "usbip listening" */
 
     if (!mdns_skel_start()) {
         printf("[main] mdns failed, but usbip still listening\n");
         /* Non-fatal; keep going. */
     }
+    stage_marker(4);   /* "mDNS started" */
 
     printf("[main] all services up, entering main loop\n");
 
-    /* Heartbeat: ~1 Hz pulse so you can see the firmware is alive. */
+    /* Heartbeat: equal-duty 0.5 Hz so it's unambiguously a blink, not
+     * "mostly off." 1 s on, 1 s off. If you see this, everything is up. */
     while (true) {
-        led(true);  sleep_ms(50);
-        led(false); sleep_ms(950);
+        led(true);  sleep_ms(1000);
+        led(false); sleep_ms(1000);
     }
 }

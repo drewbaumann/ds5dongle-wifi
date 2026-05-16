@@ -22,11 +22,17 @@ bool mdns_skel_start(void) {
         return false;
     }
 
+    bool ok = true;
+
+    /* Wrap lwIP API calls — see comment in usbip_skel.c. */
+    cyw43_arch_lwip_begin();
+
     mdns_resp_init();
 
     if (mdns_resp_add_netif(netif_default, MDNS_HOSTNAME) != ERR_OK) {
         printf("[mdns] add_netif failed\n");
-        return false;
+        ok = false;
+        goto out;
     }
 
     int8_t slot = mdns_resp_add_service(
@@ -36,10 +42,15 @@ bool mdns_skel_start(void) {
         NULL, NULL);
     if (slot < 0) {
         printf("[mdns] add_service failed (slot=%d)\n", slot);
-        return false;
+        ok = false;
+        goto out;
     }
 
-    printf("[mdns] advertising as " MDNS_HOSTNAME
-           ".local (_usbip._tcp, port %d)\n", USBIP_PORT);
-    return true;
+out:
+    cyw43_arch_lwip_end();
+    if (ok) {
+        printf("[mdns] advertising as " MDNS_HOSTNAME
+               ".local (_usbip._tcp, port %d)\n", USBIP_PORT);
+    }
+    return ok;
 }

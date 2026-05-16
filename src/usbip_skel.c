@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "pico/cyw43_arch.h"
 #include "lwip/tcp.h"
 #include "lwip/pbuf.h"
 #include "lwip/err.h"
@@ -211,25 +212,35 @@ static err_t on_accept(void *arg, struct tcp_pcb *new_pcb, err_t err) {
 }
 
 bool usbip_skel_start(void) {
-    /* Match the Pico SDK TCP server example: dual-stack PCB, bind to any. */
+    /* All lwIP raw API calls from the main thread must be wrapped with
+     * cyw43_arch_lwip_begin/end when using the threadsafe-background
+     * variant. Without this, calling tcp_* from main() can deadlock
+     * against IRQ-context lwIP work. */
+    cyw43_arch_lwip_begin();
+
     struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
     if (!pcb) {
+        cyw43_arch_lwip_end();
         printf("[usbip] tcp_new_ip_type failed\n");
         return false;
     }
     err_t err = tcp_bind(pcb, IP_ANY_TYPE, USBIP_PORT);
     if (err != ERR_OK) {
-        printf("[usbip] tcp_bind failed: %d\n", err);
         tcp_close(pcb);
+        cyw43_arch_lwip_end();
+        printf("[usbip] tcp_bind failed: %d\n", err);
         return false;
     }
     struct tcp_pcb *listen_pcb = tcp_listen_with_backlog(pcb, 1);
     if (!listen_pcb) {
-        printf("[usbip] tcp_listen failed\n");
         tcp_close(pcb);
+        cyw43_arch_lwip_end();
+        printf("[usbip] tcp_listen failed\n");
         return false;
     }
     tcp_accept(listen_pcb, on_accept);
+
+    cyw43_arch_lwip_end();
     printf("[usbip] listening on tcp/%d\n", USBIP_PORT);
     return true;
 }
