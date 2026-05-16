@@ -1,12 +1,9 @@
 /*
  * mDNS announce — makes the Pico discoverable as `senselink.local`.
- *
- * Advertises one service: _usbip._tcp on port 3240. On a host with
- * nss-mdns + avahi-daemon (default on Fedora/Bazzite), resolving
- * `senselink.local` just works through `getent hosts`, `curl`, `usbip`,
- * etc. — no static IP, no router DHCP reservation needed.
+ * Heavily instrumented with LOG() so we can see which lwIP call hangs.
  */
 #include "mdns_skel.h"
+#include "log_udp.h"
 
 #include <stdio.h>
 #include "pico/cyw43_arch.h"
@@ -16,23 +13,27 @@
 #define USBIP_PORT       3240
 
 bool mdns_skel_start(void) {
+    LOG("[mdns] enter\n");
+
     extern struct netif *netif_default;
     if (!netif_default) {
-        printf("[mdns] no default netif yet\n");
+        LOG("[mdns] no default netif yet\n");
         return false;
     }
+    LOG("[mdns] netif_default = %p\n", (void*)netif_default);
 
-    bool ok = true;
-
-    /* Wrap lwIP API calls — see comment in usbip_skel.c. */
+    LOG("[mdns] taking lwip lock\n");
     cyw43_arch_lwip_begin();
+    LOG("[mdns] lwip lock held; calling mdns_resp_init\n");
 
     mdns_resp_init();
+    LOG("[mdns] mdns_resp_init returned\n");
 
-    if (mdns_resp_add_netif(netif_default, MDNS_HOSTNAME) != ERR_OK) {
-        printf("[mdns] add_netif failed\n");
-        ok = false;
-        goto out;
+    err_t e = mdns_resp_add_netif(netif_default, MDNS_HOSTNAME);
+    LOG("[mdns] mdns_resp_add_netif returned %d\n", (int)e);
+    if (e != ERR_OK) {
+        cyw43_arch_lwip_end();
+        return false;
     }
 
     int8_t slot = mdns_resp_add_service(
@@ -40,17 +41,14 @@ bool mdns_skel_start(void) {
         MDNS_HOSTNAME, "_usbip", DNSSD_PROTO_TCP,
         USBIP_PORT,
         NULL, NULL);
-    if (slot < 0) {
-        printf("[mdns] add_service failed (slot=%d)\n", slot);
-        ok = false;
-        goto out;
-    }
+    LOG("[mdns] mdns_resp_add_service returned slot=%d\n", (int)slot);
 
-out:
     cyw43_arch_lwip_end();
-    if (ok) {
-        printf("[mdns] advertising as " MDNS_HOSTNAME
-               ".local (_usbip._tcp, port %d)\n", USBIP_PORT);
-    }
-    return ok;
+    LOG("[mdns] lwip lock released\n");
+
+    if (slot < 0) return false;
+
+    LOG("[mdns] up — advertising " MDNS_HOSTNAME ".local (_usbip._tcp port %d)\n",
+        USBIP_PORT);
+    return true;
 }
