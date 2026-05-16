@@ -4,10 +4,10 @@
  * The Pico has no UART pin broken out to the user, and USB CDC stdio is
  * problematic with our pinned TinyUSB. But multicast UDP is the same path
  * mDNS uses, and we already know that works. So we send every log line as
- * a UDP packet to 224.0.0.123:9999 — listen on any host on the network:
+ * a UDP packet to 239.255.42.42:9999 — listen on any host on the network:
  *
  *   On Bazzite/Fedora:
- *     socat -u 'UDP4-RECV:9999,reuseaddr,ip-add-membership=224.0.0.123:0.0.0.0' -
+ *     socat -u 'UDP4-RECV:9999,reuseaddr,ip-add-membership=239.255.42.42:0.0.0.0' -
  *
  *   Or with Python (no extra deps):
  *     python3 - <<'EOF'
@@ -15,7 +15,7 @@
  *     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
  *     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
  *     s.bind(('', 9999))
- *     mreq = struct.pack('4sl', socket.inet_aton('224.0.0.123'), socket.INADDR_ANY)
+ *     mreq = struct.pack('4sl', socket.inet_aton('239.255.42.42'), socket.INADDR_ANY)
  *     s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
  *     while True:
  *         data, addr = s.recvfrom(1500)
@@ -32,7 +32,7 @@
 #include "lwip/pbuf.h"
 #include "lwip/ip_addr.h"
 
-#define LOG_MCAST_ADDR  "224.0.0.123"
+#define LOG_MCAST_ADDR  "239.255.42.42"
 #define LOG_MCAST_PORT  9999
 #define LOG_MAX_LEN     512
 
