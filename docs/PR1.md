@@ -21,18 +21,23 @@ First run:
 ./build.sh
 ```
 
-It prompts for your Wi-Fi SSID and PSK once, saves them to
-`senselink.local.conf` (mode `0600`, gitignored), and builds. Every
-subsequent `./build.sh` reuses those credentials.
+It prompts for **one or more** Wi-Fi networks (SSID + PSK each, hidden
+input). On boot the Pico scans the air, intersects what it sees with
+your saved list, and connects to whichever known network has the best
+signal. Plug the same Pico in at home, at a friend's, or in a hotel
+running a portable router with your home Wi-Fi cloned — it joins
+whichever is in range.
 
-To change credentials later:
+Credentials are stored in `senselink.local.conf` (mode `0600`,
+gitignored). To change them later:
 
 | What you want | Command |
 |---|---|
-| Re-prompt and overwrite saved creds | `./build.sh setup` |
-| Delete the saved config | `rm senselink.local.conf` |
-| Hand-edit one field | `$EDITOR senselink.local.conf` |
-| One-off override without touching the file | `SENSELINK_WIFI_SSID="X" SENSELINK_WIFI_PSK="Y" ./build.sh` |
+| Append another network | `./build.sh add` |
+| Re-prompt all from scratch (overwrites) | `./build.sh setup` |
+| Hand-edit | `$EDITOR senselink.local.conf` |
+| Delete everything and start over | `rm senselink.local.conf` |
+| One-off override (no file change) | `SENSELINK_SSIDS=("Net") SENSELINK_PSKS=("p") ./build.sh` |
 | Force clean rebuild | `./build.sh clean` |
 
 Outputs:
@@ -56,15 +61,25 @@ UART output (pin GP0 TX) prints:
 
 ## Verify from a Linux host
 
+The Pico advertises itself as `senselink.local` via mDNS. On any host
+with avahi-daemon + nss-mdns (default on Bazzite/Fedora), no IP needed:
+
 ```
-$ usbip list -r 192.168.1.55
+$ usbip list -r senselink.local
 Exportable USB devices
 ======================
- - 192.168.1.55
+ - senselink.local
         1-1: Sony Corp. : DualSense Wireless Controller (054c:0ce6)
            : /sys/devices/senselink-pico/usb1/1-1
            : (Defined at Interface level) (00/00/00)
            :  0 - Human Interface Device / No Subclass / None (03/00/00)
+```
+
+Or if mDNS isn't working in your environment, target the IP directly:
+
+```
+$ avahi-browse -rt _usbip._tcp        # see the announce
+$ usbip list -r <pico-ip>             # or use the IP straight
 ```
 
 If you see that, PR 1 is green.

@@ -14,6 +14,7 @@
 
 #include "wifi_skel.h"
 #include "usbip_skel.h"
+#include "mdns_skel.h"
 
 int main(void) {
     stdio_init_all();
@@ -29,6 +30,12 @@ int main(void) {
     if (!usbip_skel_start()) {
         printf("[main] usbip start failed; halting\n");
         while (true) sleep_ms(1000);
+    }
+
+    if (!mdns_skel_start()) {
+        /* Non-fatal: usbip still listens on IP, host can target the IP
+         * directly. */
+        printf("[main] mdns failed, but usbip still listening\n");
     }
 
     /* lwIP runs in the threadsafe-background variant — no polling needed.

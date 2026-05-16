@@ -189,34 +189,37 @@ pico_add_extra_outputs(ds5-bridge)
 #   cmake -DSENSELINK_SKEL=ON -DSENSELINK_WIFI_SSID=... -DSENSELINK_WIFI_PSK=...
 # ─────────────────────────────────────────────────────────────────────────
 option(SENSELINK_SKEL "Build the PR 1 Wi-Fi/usbip skeleton firmware" OFF)
-set(SENSELINK_WIFI_SSID "" CACHE STRING "Wi-Fi SSID for skeleton firmware")
-set(SENSELINK_WIFI_PSK  "" CACHE STRING "Wi-Fi PSK for skeleton firmware")
 
 if (SENSELINK_SKEL)
-    if (SENSELINK_WIFI_SSID STREQUAL "" OR SENSELINK_WIFI_PSK STREQUAL "")
+    set(SENSELINK_CREDS_HEADER
+        "${CMAKE_CURRENT_SOURCE_DIR}/generated/wifi_creds_generated.h")
+    if (NOT EXISTS "${SENSELINK_CREDS_HEADER}")
         message(FATAL_ERROR
-            "SENSELINK_SKEL=ON requires -DSENSELINK_WIFI_SSID=... and -DSENSELINK_WIFI_PSK=...")
+            "SENSELINK_SKEL=ON requires ${SENSELINK_CREDS_HEADER}. "
+            "Run ./build.sh — it generates this file from your saved Wi-Fi "
+            "networks in senselink.local.conf.")
     endif()
 
     add_executable(senselink-skel
         src/main_skel.c
         src/wifi_skel.c
         src/usbip_skel.c
+        src/mdns_skel.c
     )
 
     target_include_directories(senselink-skel PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/generated
     )
 
     target_compile_definitions(senselink-skel PRIVATE
-        SENSELINK_WIFI_SSID="${SENSELINK_WIFI_SSID}"
-        SENSELINK_WIFI_PSK="${SENSELINK_WIFI_PSK}"
         CYW43_LWIP=1
     )
 
     target_link_libraries(senselink-skel
         pico_stdlib
         pico_cyw43_arch_lwip_threadsafe_background
+        pico_lwip_mdns
     )
 
     pico_enable_stdio_uart(senselink-skel 1)
