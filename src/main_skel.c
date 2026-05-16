@@ -86,18 +86,14 @@ int main(void) {
         LOG("[main] mdns failed, but usbip still listening\n");
     }
     log_udp_send("[main] after mdns_skel_start (success)\n");
-    stage_marker(4);
-    log_udp_send("[main] after stage_marker(4); about to enter heartbeat\n");
 
-    /* Heartbeat without LED first — if we can't get this LOG to fire,
-     * the issue isn't the cyw43 LED but lwIP. */
+    /* DELIBERATELY skipping stage_marker(4) and the LED in the heartbeat:
+     * we suspect cyw43_arch_gpio_put hangs the N-th time after mDNS init.
+     * If heartbeats keep arriving here, the hypothesis is confirmed and
+     * the next change is to take the LED out of the hot path. */
     int beat = 0;
     while (true) {
-        log_udp_send("[main] heartbeat %d (no LED)\n", ++beat);
+        log_udp_send("[main] heartbeat %d (no LED, no stage marker)\n", ++beat);
         sleep_ms(1000);
-        led(true);  sleep_ms(100);
-        led(false); sleep_ms(100);
-        led(true);  sleep_ms(100);
-        led(false); sleep_ms(700);
     }
 }
