@@ -15,17 +15,29 @@ plumbing in isolation. Nothing to do with Bluetooth or USB yet — just
 
 ## Build
 
+First run:
+
 ```
-./build.sh clean \
-  -DSENSELINK_SKEL=ON \
-  -DSENSELINK_WIFI_SSID="MyNet" \
-  -DSENSELINK_WIFI_PSK="hunter2"
+./build.sh
 ```
 
-Output: `build/senselink-skel.uf2`.
+It prompts for your Wi-Fi SSID and PSK once, saves them to
+`senselink.local.conf` (mode `0600`, gitignored), and builds. Every
+subsequent `./build.sh` reuses those credentials.
 
-The baseline DS5Dongle firmware (`build/ds5-bridge.uf2`) is still built
-alongside; the skeleton is purely additive.
+To change credentials later:
+
+| What you want | Command |
+|---|---|
+| Re-prompt and overwrite saved creds | `./build.sh setup` |
+| Delete the saved config | `rm senselink.local.conf` |
+| Hand-edit one field | `$EDITOR senselink.local.conf` |
+| One-off override without touching the file | `SENSELINK_WIFI_SSID="X" SENSELINK_WIFI_PSK="Y" ./build.sh` |
+| Force clean rebuild | `./build.sh clean` |
+
+Outputs:
+- `build/senselink-skel.uf2` — the PR 1 skeleton firmware
+- `build/ds5-bridge.uf2` — the upstream baseline (still built alongside)
 
 ## Flash and run
 
