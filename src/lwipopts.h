@@ -12,7 +12,10 @@
 #define LWIP_NETCONN                0
 #define MEM_LIBC_MALLOC             0
 #define MEM_ALIGNMENT               4
-#define MEM_SIZE                    8000
+/* Bumped from 8000 → 16000: TCP_WND + TCP_SND_BUF together can use
+ * ~24 KB worst-case, and we don't want allocation failures silently
+ * breaking the listener. The RP2350 has plenty of SRAM to spare. */
+#define MEM_SIZE                    16000
 
 #define MEMP_NUM_TCP_SEG            32
 #define LWIP_ARP                    1

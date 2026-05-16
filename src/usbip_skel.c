@@ -211,14 +211,21 @@ static err_t on_accept(void *arg, struct tcp_pcb *new_pcb, err_t err) {
 }
 
 bool usbip_skel_start(void) {
-    struct tcp_pcb *pcb = tcp_new();
-    if (!pcb) return false;
-    if (tcp_bind(pcb, IP_ANY_TYPE, USBIP_PORT) != ERR_OK) {
+    /* Match the Pico SDK TCP server example: dual-stack PCB, bind to any. */
+    struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
+    if (!pcb) {
+        printf("[usbip] tcp_new_ip_type failed\n");
+        return false;
+    }
+    err_t err = tcp_bind(pcb, IP_ANY_TYPE, USBIP_PORT);
+    if (err != ERR_OK) {
+        printf("[usbip] tcp_bind failed: %d\n", err);
         tcp_close(pcb);
         return false;
     }
     struct tcp_pcb *listen_pcb = tcp_listen_with_backlog(pcb, 1);
     if (!listen_pcb) {
+        printf("[usbip] tcp_listen failed\n");
         tcp_close(pcb);
         return false;
     }
