@@ -205,6 +205,7 @@ if (SENSELINK_SKEL)
         src/wifi_skel.c
         src/usbip_skel.c
         src/mdns_skel.c
+        src/log_udp.c
     )
 
     target_include_directories(senselink-skel PRIVATE
