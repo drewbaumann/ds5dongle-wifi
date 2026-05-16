@@ -32,11 +32,16 @@ static inline void led(bool on) {
 }
 
 static void stage_marker(int n) {
+    log_udp_send("[stage] enter n=%d\n", n);
     for (int i = 0; i < n; i++) {
+        log_udp_send("[stage] iter %d: led on\n", i);
         led(true);  sleep_ms(150);
+        log_udp_send("[stage] iter %d: led off\n", i);
         led(false); sleep_ms(150);
     }
+    log_udp_send("[stage] trailing sleep\n");
     sleep_ms(500);
+    log_udp_send("[stage] exit\n");
 }
 
 static __attribute__((noreturn)) void halt_blink_sos(void) {
@@ -76,21 +81,23 @@ int main(void) {
     stage_marker(3);
     LOG("[main] usbip listener up\n");
 
+    log_udp_send("[main] before mdns_skel_start\n");
     if (!mdns_skel_start()) {
         LOG("[main] mdns failed, but usbip still listening\n");
     }
+    log_udp_send("[main] after mdns_skel_start (success)\n");
     stage_marker(4);
-    LOG("[main] mdns up — all services running\n");
+    log_udp_send("[main] after stage_marker(4); about to enter heartbeat\n");
 
-    /* Distinctive "lub-dub" heartbeat — two short pulses per second.
-     * Impossible to mistake for solid. Send a UDP log every cycle so we
-     * also see liveness over the network. */
+    /* Heartbeat without LED first — if we can't get this LOG to fire,
+     * the issue isn't the cyw43 LED but lwIP. */
     int beat = 0;
     while (true) {
+        log_udp_send("[main] heartbeat %d (no LED)\n", ++beat);
+        sleep_ms(1000);
         led(true);  sleep_ms(100);
         led(false); sleep_ms(100);
         led(true);  sleep_ms(100);
         led(false); sleep_ms(700);
-        LOG("[main] heartbeat %d\n", ++beat);
     }
 }
