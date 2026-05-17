@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
+#include "lwip/stats.h"
 
 #include "wifi_skel.h"
 #include "usbip_skel.h"
@@ -71,7 +72,9 @@ int main(void) {
     if (!log_udp_init()) {
         printf("[main] log_udp_init failed (continuing without UDP logs)\n");
     } else {
-        LOG("[main] UDP logger online (224.0.0.123:9999)\n");
+        LOG("[main] UDP logger online (239.255.42.42:9999)\n");
+        LOG("[main] cyw43_wifi_pm(NONE_PM) returned %d (0=ok)\n",
+            wifi_skel_last_pm_rc);
     }
 
     if (!usbip_skel_start()) {
@@ -88,17 +91,25 @@ int main(void) {
     log_udp_send("[main] after mdns_skel_start (success)\n");
     log_udp_send("[main] entering heartbeat loop; fast for 5s then slow\n");
 
-    /* Fine-grained heartbeats with timestamps so we see exactly when the
-     * firmware hangs (if it does) and at what time. First 50 beats at
-     * 100 ms (5 s of fast pings), then 1 Hz forever. */
+    /* Slow heartbeat with a visible LED blink AND lwIP RX/TX counters
+     * dumped every iteration. If link.recv stays at the same value while
+     * you ping the Pico, packets aren't reaching the chip at all (the
+     * problem is upstream of us). If link.recv climbs but tcp/icmp/udp
+     * recv don't, the chip receives but lwIP rejects. */
     int beat = 0;
     while (true) {
         beat++;
-        log_udp_send("[main] heartbeat %d\n", beat);
-        if (beat < 50) {
-            sleep_ms(100);
-        } else {
-            sleep_ms(1000);
-        }
+        led(true);  sleep_ms(50);  led(false);  /* brief visible flash */
+        log_udp_send(
+            "[hb] %d  link rx=%lu xmit=%lu  ip rx=%lu  "
+            "tcp rx=%lu  udp rx=%lu  icmp rx=%lu\n",
+            beat,
+            (unsigned long)lwip_stats.link.recv,
+            (unsigned long)lwip_stats.link.xmit,
+            (unsigned long)lwip_stats.ip.recv,
+            (unsigned long)lwip_stats.tcp.recv,
+            (unsigned long)lwip_stats.udp.recv,
+            (unsigned long)lwip_stats.icmp.recv);
+        sleep_ms(950);
     }
 }

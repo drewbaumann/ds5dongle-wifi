@@ -19,6 +19,8 @@
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 
+int wifi_skel_last_pm_rc = -999;
+
 /* ── Scan accumulator ────────────────────────────────────────────────────
  * For each known SSID, track the strongest RSSI seen during the scan.
  */
@@ -131,22 +133,16 @@ bool wifi_skel_init(void) {
         int rc = cyw43_arch_wifi_connect_timeout_ms(
             ssid, psk, CYW43_AUTH_WPA2_AES_PSK, 30000);
         if (rc == 0) {
-            /* Disable CYW43 power-save. The SDK defaults to CYW43_PERFORMANCE_PM
-             * (PM2, 200ms nap windows) inside cyw43_arch_enable_sta_mode(). In
-             * that mode the chip naps between Wi-Fi events and drops inbound
-             * unicast — ICMP, TCP SYN, mDNS queries — so the Pico becomes
-             * unreachable to other LAN clients despite still transmitting fine.
-             * CYW43_NONE_PM keeps the radio fully awake. ~50 mA extra idle, but
-             * this device is wall-powered. */
-            cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
+            int pm_rc = cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
+            wifi_skel_last_pm_rc = pm_rc;
+            printf("[wifi] cyw43_wifi_pm(NONE_PM) returned %d\n", pm_rc);
 
             extern struct netif *netif_default;
             if (netif_default) {
-                printf("[wifi] connected to '%s', ip=%s (PM disabled)\n",
-                       ssid,
-                       ip4addr_ntoa(netif_ip4_addr(netif_default)));
+                printf("[wifi] connected to '%s', ip=%s (pm_rc=%d)\n",
+                       ssid, ip4addr_ntoa(netif_ip4_addr(netif_default)), pm_rc);
             } else {
-                printf("[wifi] connected to '%s' (no netif?, PM disabled)\n", ssid);
+                printf("[wifi] connected to '%s' (no netif?, pm_rc=%d)\n", ssid, pm_rc);
             }
             return true;
         }
