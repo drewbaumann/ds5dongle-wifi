@@ -91,25 +91,19 @@ int main(void) {
     log_udp_send("[main] after mdns_skel_start (success)\n");
     log_udp_send("[main] entering heartbeat loop; fast for 5s then slow\n");
 
-    /* Slow heartbeat with a visible LED blink AND lwIP RX/TX counters
-     * dumped every iteration. If link.recv stays at the same value while
-     * you ping the Pico, packets aren't reaching the chip at all (the
-     * problem is upstream of us). If link.recv climbs but tcp/icmp/udp
-     * recv don't, the chip receives but lwIP rejects. */
+    /* Slow heartbeat — NO LED toggle. cyw43_arch_gpio_put after mDNS
+     * reliably hangs the main thread, mechanism unknown; confirmed twice
+     * now. We get visibility from the UDP log + lwIP counters instead. */
     int beat = 0;
     while (true) {
         beat++;
-        led(true);  sleep_ms(50);  led(false);  /* brief visible flash */
         log_udp_send(
-            "[hb] %d  link rx=%lu xmit=%lu  ip rx=%lu  "
-            "tcp rx=%lu  udp rx=%lu  icmp rx=%lu\n",
+            "[hb] %d  ip rx=%lu  tcp rx=%lu  udp rx=%lu  icmp rx=%lu\n",
             beat,
-            (unsigned long)lwip_stats.link.recv,
-            (unsigned long)lwip_stats.link.xmit,
             (unsigned long)lwip_stats.ip.recv,
             (unsigned long)lwip_stats.tcp.recv,
             (unsigned long)lwip_stats.udp.recv,
             (unsigned long)lwip_stats.icmp.recv);
-        sleep_ms(950);
+        sleep_ms(1000);
     }
 }
